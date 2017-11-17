@@ -55,7 +55,9 @@ trimTree n (T x ts) = T x (map (trimTree (n-1)) ts)
 path :: [Int] -> Tree a -> a
 path [] (T y _) = y
 path (x:xs) (T _ ts) = path xs (findXth x ts)
-    where findXth 0 (x:_) = x
+    where findXth x _ | x < 0 = error "Negative child in path!"
+          findXth _ xs | null xs = error "Empty children list!"
+          findXth 0 (x:_) = x
           findXth x (_:xs) = findXth (x-1) xs
 
 main =
