@@ -60,8 +60,7 @@ path (x:xs) (T _ ts) = path xs (findXth x ts)
           findXth 0 (x:_) = x
           findXth x (_:xs) = findXth (x-1) xs
 
-main =
-    let t = T 10 [T 8 [T 3 [], T 2 []], T 6 [], T 4 [T 1 [T 0 []]]]
+main = do
 --      10
 --    / | \
 --   8  6  4
@@ -69,4 +68,28 @@ main =
 -- 3   2   1
 --         |
 --         0
-    in print $ path [2,0,0] t
+        let t = T 10 [T 8 [T 3 [], T 2 []], T 6 [], T 4 [T 1 [T 0 []]]]
+        putStrLn "An example tree for all the tests:"
+        print t
+        putStrLn "\nSize of Tree (sizeTree):"
+        print $ sizeTree t
+        putStrLn "\nHeight of Tree (heightTree):"
+        print $ heightTree t
+        putStrLn "\nSum of all nodes (sumTree):"
+        print $ sumTree t
+        putStrLn "\nMaximum value of all nodes (maxTree):"
+        print $ maxTree t
+        putStrLn "\nChecks if a value (e.g. 2 and 7) is in the Tree (inTree):"
+        putStrLn $ show (inTree 2 t) ++ ", " ++ show (inTree 7 t)
+        putStrLn "\nA list with all node values (nodes):"
+        print $ nodes t
+        putStrLn "\nNumber of all nodes that satisfy a predicate f (e.g. x > 4) (countTree):"
+        print $ countTree (>4) t
+        putStrLn "\nA list with all leaf values (leaves):"
+        print $ leaves t
+        putStrLn "\nThe tree that is produced if we apply f (e.g. f x = x + 42) to each node (mapTree):"
+        print $ mapTree (+42) t
+        putStrLn "\nThe tree that is left if we \"trim\" it at height n (e.g. 2) (trimTree):"
+        print $ trimTree 2 t
+        putStrLn "\nThe value of the node following the path given (e.g. [0, 1]) (path):"
+        print $ path [0, 1] t
