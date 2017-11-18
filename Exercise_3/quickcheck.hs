@@ -45,13 +45,6 @@ prop_mapTree2 f n t = inTree n t ==> inTree n' t'
     where n' = f n
           t' = mapTree f t
 
-
--- prop_mapTree2 :: (Int -> Int) -> Tree Int -> Bool
--- prop_mapTree2 f t = inTree n' t'
---     where n = head $ leaves t
---           n' = f n
---           t' = mapTree f t
-
 prop_nodes_leaves :: (Int -> Int) -> Tree Int -> Bool
 prop_nodes_leaves f t = (map f . nodes) t == (nodes . mapTree f) t &&
                         (map f . leaves) t == (leaves . mapTree f) t
@@ -112,13 +105,29 @@ findBird q t = findBird' q t 1
                 then True
                 else findBird' q' t' (n+1)
 
+-- The same as "findBird", but is faster since it checks
+-- only the path till the number is found
+-- It exploits the way the Bird tree is defined
+findBirdFast :: Rational -> Tree Rational -> Bool
+findBirdFast q (T x ts) | x == q = True
+                        | x < q = findBirdFast q (maxTr ts)
+                        | otherwise = findBirdFast q (minTr ts)
+                            where maxTr [left@(T y _), right@(T z _)] = 
+                                    if y > z
+                                        then left
+                                        else right
+                                  minTr [left@(T y _), right@(T z _)] =
+                                    if y > z
+                                        then right
+                                        else left
+
 -- A simple generator for small Rational numbers with an upper bound given in seed
 genRationals :: Integer -> Gen Rational
 genRationals seed | seed > 0 = liftM2 (%) (choose (1, seed)) (choose (1, seed))
                   | otherwise = liftM2 (%) (choose (1, 23)) (choose (1, 23))
 
 prop_all_rationals :: Integer -> Tree Rational -> Property
-prop_all_rationals seed t = forAll (genRationals seed) $ \q -> findBird q t
+prop_all_rationals seed t = forAll (genRationals seed) $ \q -> findBirdFast q t
 
 main = do
         putStrLn "Check that the height of a tree is a positive integer and is less than the size of the Tree (prop_heightTree):"
@@ -157,5 +166,5 @@ main = do
         t <- quickCheck $ prop_fib_in_bird bird
         print t
         putStrLn "\nCheck that every Rational number appears in the Bird tree (prop_all_rationals):"
-        t <- quickCheck $ prop_all_rationals 13 bird
+        t <- quickCheck $ prop_all_rationals 4213 bird
         print t
