@@ -54,16 +54,13 @@ createConstraints :: Expr -> Env -> Int -> Maybe (Type, Constraints, Int)
 createConstraints (Evar x) g vars =
     lookup x g >>= \t -> Just (Tvar t, [], vars)
 createConstraints (Eabs x e) g vars =
-    let (t, c, vars') = fromMaybe ((Tvar (-1)), [], -1) (createConstraints e ((x, vars + 1):g) (vars + 1))
-    in if vars' < 0
-        then Nothing
-        else Just ((Tfun (Tvar (vars + 1)) t), c, vars')
+    createConstraints e ((x, vars + 1):g) (vars + 1) >>=
+    \(t, c, vars') -> Just ((Tfun (Tvar (vars + 1)) t), c, vars')
 createConstraints (Eapp e1 e2) g vars =
-    let (t, c1, vars') = fromMaybe (Tvar (-1), [], -1) (createConstraints e1 g vars)
-        (t', c2, vars'') = fromMaybe (Tvar (-1), [], -1) (createConstraints e2 g vars')
-    in if vars' < 0 || vars'' < 0
-        then Nothing
-        else Just (Tvar (vars'' + 1), (t, Tfun t' (Tvar (vars'' + 1))):(c1 ++ c2), vars'')
+    createConstraints e1 g vars >>=
+    \(t, c1, vars') -> createConstraints e2 g vars' >>=
+    \(t', c2, vars'') ->
+        Just (Tvar (vars'' + 1), (t, Tfun t' (Tvar (vars'' + 1))):(c1 ++ c2), vars'')
 
 -- Finds if a Type appears inside another one
 
@@ -99,9 +96,9 @@ unify ((t1@(Tfun t11 t12), t2@(Tfun t21 t22)):c) subs =
 unify _ _ = Nothing
 
 -- Applies Type Substitution
-substitute :: Type -> Rules -> Type
-substitute t@(Tvar a) c =
-    case lookup t c of
+substituteOnce :: Type -> Rules -> Type
+substituteOnce t@(Tvar a) r =
+    case lookup t r of
         Just t' -> replace t t' t
         Nothing -> t
     where replace t1 t2 t'@(Tvar a)
@@ -109,12 +106,17 @@ substitute t@(Tvar a) c =
             | otherwise = t'
           replace t1 t2 (Tfun t21 t22) =
                Tfun (replace t1 t2 t21) (replace t1 t2 t22) 
-substitute t@(Tfun t1 t2) c =
-    Tfun (substitute t1 c) (substitute t2 c)
+substituteOnce t@(Tfun t1 t2) r =
+    Tfun (substituteOnce t1 r) (substituteOnce t2 r)
+
+substitute :: Type -> Rules -> Type
+substitute t r =
+    let t' = substituteOnce t r
+    in if t == t' then t else substitute t' r
 
 -- Sorts output types
 sortTypes :: Type -> Maybe Type
-sortTypes t = Just (substitute t (fst sorted_types))
+sortTypes t = Just (substituteOnce t (fst sorted_types))
     where sorted_types = createSortedList t 0 []
           createSortedList t@(Tvar a) counter subs =
             case lookup t subs of
