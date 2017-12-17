@@ -55,12 +55,12 @@ createConstraints (Evar x) g vars =
     lookup x g >>= \t -> Just (Tvar t, [], vars)
 createConstraints (Eabs x e) g vars =
     createConstraints e ((x, vars + 1):g) (vars + 1) >>=
-    \(t, c, vars') -> Just ((Tfun (Tvar (vars + 1)) t), c, vars')
+    \(t, c, vars') -> Just ((Tfun (Tvar (vars + 1)) t), c, vars' + 1)
 createConstraints (Eapp e1 e2) g vars =
     createConstraints e1 g vars >>=
     \(t, c1, vars') -> createConstraints e2 g vars' >>=
     \(t', c2, vars'') ->
-        Just (Tvar (vars'' + 1), (t, Tfun t' (Tvar (vars'' + 1))):(c1 ++ c2), vars'')
+        Just (Tvar (vars'' + 1), (t, Tfun t' (Tvar (vars'' + 1))):(c1 ++ c2), vars'' + 1)
 
 -- Finds if a Type appears inside another one
 
@@ -109,10 +109,10 @@ substituteOnce t@(Tvar a) r =
 substituteOnce t@(Tfun t1 t2) r =
     Tfun (substituteOnce t1 r) (substituteOnce t2 r)
 
-substitute :: Type -> Rules -> Type
+substitute :: Type -> Rules -> Maybe Type
 substitute t r =
-    let t' = substituteOnce t r
-    in if t == t' then t else substitute t' r
+    return (substituteOnce t r) >>=
+    \t' -> if t == t' then Just t else substitute t' r
 
 -- Sorts output types
 sortTypes :: Type -> Maybe Type
@@ -134,7 +134,7 @@ findType =  do  s <- getLine
                 let e = read s :: Expr
                 let typ = createConstraints e [] 0 >>=
                            \(t, c, _) -> unify c [] >>=
-                           \c -> return (substitute t c) >>=
+                           \c -> substitute t c >>=
                            \t -> sortTypes t
                 maybe (putStrLn "type error") print typ
 
