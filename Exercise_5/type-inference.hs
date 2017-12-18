@@ -133,9 +133,8 @@ sortTypes t = Just (substituteOnce t (fst sorted_types))
 findType =  do  s <- getLine
                 let e = read s :: Expr
                 let typ = createConstraints e [] 0 >>=
-                           \(t, c, _) -> unify c [] >>=
-                           \c -> substitute t c >>=
-                           \t -> sortTypes t
+                          \(t, c, _) -> unify c [] >>=
+                          substitute t >>= sortTypes
                 maybe (putStrLn "type error") print typ
 
 count n m  =  sequence $ take n $ repeat m
