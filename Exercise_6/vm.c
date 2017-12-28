@@ -32,11 +32,17 @@
 
 
 // Helper functions
-uint8_t get_1_byte(uint8_t *pc);
-uint16_t get_2_bytes(uint8_t *pc);
-uint32_t get_4_bytes(uint8_t *pc);
 #define push(STACK, TOP, ELEM) (STACK[++TOP] = ELEM)
 #define pop(STACK, TOP) (STACK[TOP--])
+uint8_t get_1_byte(uint8_t *pc) {
+	return pc[0];
+}
+uint16_t get_2_bytes(uint8_t *pc) {
+	return pc[0] + (pc[1] << 8);
+}
+uint32_t get_4_bytes(uint8_t *pc) {
+	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24);
+}
 
 
 int main(int argc, char const *argv[]) {
@@ -252,6 +258,9 @@ int main(int argc, char const *argv[]) {
 				pc += 1;
 				break;
 			}
+			default:
+				loop = false;
+				pc += 1;
 		}
 	}
 	return 0;
