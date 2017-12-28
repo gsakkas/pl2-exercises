@@ -30,24 +30,37 @@
 #define OUTPUT 0x17
 #define CLOCK 0x2a
 
+// Debug
+// #define __DEBUG__
+// #define __DEBUG_GET_BYTES__
+
 
 // Helper functions
 #define push(STACK, TOP, ELEM) (STACK[++TOP] = ELEM)
 #define pop(STACK, TOP) (STACK[TOP--])
 uint8_t get_1_byte(uint8_t *pc) {
+	#ifdef __DEBUG_GET_BYTES__
+		printf("1_byte: %c\n", pc[0]);
+	#endif
 	return pc[0];
 }
 uint16_t get_2_bytes(uint8_t *pc) {
+	#ifdef __DEBUG_GET_BYTES__
+		printf("2_bytes: %hd\n", pc[0] + (pc[1] << 8));
+	#endif
 	return pc[0] + (pc[1] << 8);
 }
 uint32_t get_4_bytes(uint8_t *pc) {
+	#ifdef __DEBUG_GET_BYTES__
+		printf("4_bytes: %d\n", pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24));
+	#endif
 	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24);
 }
 
 
 int main(int argc, char const *argv[]) {
 	// Take program from stdin
-	FILE *fin = fopen(argv[1], "r");
+	FILE *fin = fopen(argv[1], "rb");
 
 	// Initialize a stack to hold the program
 	int top = 0;
@@ -56,8 +69,9 @@ int main(int argc, char const *argv[]) {
 
 	// Read the file that contains the program
 	int length = 0;
-	while (fscanf(fin, "%c", &program[length++]) == 1);
+	while (fscanf(fin, "%c", &program[length]) == 1) length++;
 	fclose(fin);
+	uint8_t *last_opcode = &program[--length];
 
 	// The Bytecode Interpreter
 	uint8_t *pc = &program[0];
@@ -68,24 +82,36 @@ int main(int argc, char const *argv[]) {
 		opcode = pc[0];
 		switch (opcode) {
 			case HALT:
+				#ifdef __DEBUG__
+					printf("HALT\n");
+				#endif
 				loop = false;
 				pc += 1;
 				break;
 			case JUMP:
-			{
+			{	
+				#ifdef __DEBUG__
+					printf("JUMP\n");
+				#endif
 				uint16_t jump_addr = get_2_bytes(&pc[1]);
 				pc = &program[jump_addr];
 				break;
 			}
 			case JNZ:
 			{
+				#ifdef __DEBUG__
+					printf("JNZ\n");
+				#endif
 				int stack_top = pop(stack, top);
 				uint16_t jump_addr = get_2_bytes(&pc[1]);
 				pc = (stack_top != 0) ? &program[jump_addr] : (pc + 3);
 				break;
 			}
 			case DUP:
-			{
+			{	
+				#ifdef __DEBUG__
+					printf("DUP\n");
+				#endif
 				uint8_t i = get_1_byte(&pc[1]);
 				int elem = stack[top - i];
 				push(stack, top, elem);
@@ -93,11 +119,17 @@ int main(int argc, char const *argv[]) {
 				break;
 			}
 			case DROP:
+				#ifdef __DEBUG__
+					printf("DROP\n");
+				#endif
 				pop(stack, top);
 				pc += 1;
 				break;
 			case PUSH4:
 			{
+				#ifdef __DEBUG__
+					printf("PUSH4\n");
+				#endif
 				int32_t num = get_4_bytes(&pc[1]);
 				push(stack, top, num);
 				pc += 5;
@@ -105,6 +137,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case PUSH2:
 			{
+				#ifdef __DEBUG__
+					printf("PUSH2\n");
+				#endif
 				int16_t num = get_2_bytes(&pc[1]);
 				push(stack, top, num);
 				pc += 3;
@@ -112,6 +147,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case PUSH1:
 			{
+				#ifdef __DEBUG__
+					printf("PUSH1\n");
+				#endif
 				int8_t num = get_1_byte(&pc[1]);
 				push(stack, top, num);
 				pc += 2;
@@ -119,6 +157,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case ADD:
 			{
+				#ifdef __DEBUG__
+					printf("ADD\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				push(stack, top, a + b);
@@ -127,6 +168,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case SUB:
 			{
+				#ifdef __DEBUG__
+					printf("SUB\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				push(stack, top, a - b);
@@ -135,6 +179,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case MUL:
 			{
+				#ifdef __DEBUG__
+					printf("MUL\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				push(stack, top, a * b);
@@ -143,6 +190,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case DIV:
 			{
+				#ifdef __DEBUG__
+					printf("DIV\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				push(stack, top, a / b);
@@ -151,6 +201,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case MOD:
 			{
+				#ifdef __DEBUG__
+					printf("MOD\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				push(stack, top, a % b);
@@ -159,6 +212,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case EQ:
 			{
+				#ifdef __DEBUG__
+					printf("EQ\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int eq = (a == b) ? 1 : 0;
@@ -168,6 +224,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case NE:
 			{
+				#ifdef __DEBUG__
+					printf("NE\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int eq = (a != b) ? 1 : 0;
@@ -177,6 +236,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case LT:
 			{
+				#ifdef __DEBUG__
+					printf("LT\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int eq = (a < b) ? 1 : 0;
@@ -186,6 +248,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case GT:
 			{
+				#ifdef __DEBUG__
+					printf("GT\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int eq = (a > b) ? 1 : 0;
@@ -195,6 +260,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case LE:
 			{
+				#ifdef __DEBUG__
+					printf("LE\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int eq = (a <= b) ? 1 : 0;
@@ -204,6 +272,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case GE:
 			{
+				#ifdef __DEBUG__
+					printf("GE\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int eq = (a >= b) ? 1 : 0;
@@ -213,6 +284,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case NOT:
 			{
+				#ifdef __DEBUG__
+					printf("NOT\n");
+				#endif
 				int stack_top = pop(stack, top);
 				int not = (stack_top == 0) ? 1 : 0;
 				push(stack, top, not);
@@ -221,6 +295,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case AND:
 			{
+				#ifdef __DEBUG__
+					printf("AND\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int and = (a && b) ? 1 : 0;
@@ -230,6 +307,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case OR:
 			{
+				#ifdef __DEBUG__
+					printf("OR\n");
+				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
 				int or = (a || b) ? 1 : 0;
@@ -239,6 +319,9 @@ int main(int argc, char const *argv[]) {
 			}
 			case INPUT:
 			{
+				#ifdef __DEBUG__
+					printf("INPUT\n");
+				#endif
 				char ch;
 				if (scanf("%c", &ch) == 1);
 				push(stack, top, (int32_t)ch);
@@ -247,21 +330,32 @@ int main(int argc, char const *argv[]) {
 			}
 			case OUTPUT:
 			{
+				#ifdef __DEBUG__
+					printf("OUTPUT\n");
+				#endif
 				int32_t ch = pop(stack, top);
+				printf("%c", (char)ch);
 				pc += 1;
 				break;
 			}
 			case CLOCK:
 			{	
+				#ifdef __DEBUG__
+					printf("CLOCK\n");
+				#endif
 				double time_spent = (double)(clock() - start_time) / CLOCKS_PER_SEC;
 				printf("%0.6lf\n", time_spent);
 				pc += 1;
 				break;
 			}
 			default:
+				#ifdef __DEBUG__
+					printf("NOT_AN_OPCODE\n");
+				#endif
 				loop = false;
 				pc += 1;
 		}
+		if (pc == last_opcode) loop = false;
 	}
 	return 0;
 }
