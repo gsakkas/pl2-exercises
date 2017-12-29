@@ -37,24 +37,49 @@
 
 // Helper functions
 #define push(STACK, TOP, ELEM) (STACK[++TOP] = ELEM)
+
 #define pop(STACK, TOP) (STACK[TOP--])
-uint8_t get_1_byte(uint8_t *pc) {
+
+uint8_t get_1_ubyte(uint8_t *pc) {
 	#ifdef __DEBUG_GET_BYTES__
 		printf("1_byte: %c\n", pc[0]);
 	#endif
 	return pc[0];
 }
-uint16_t get_2_bytes(uint8_t *pc) {
+
+uint16_t get_2_ubytes(uint8_t *pc) {
 	#ifdef __DEBUG_GET_BYTES__
 		printf("2_bytes: %hd\n", pc[0] + (pc[1] << 8));
 	#endif
 	return pc[0] + (pc[1] << 8);
 }
-uint32_t get_4_bytes(uint8_t *pc) {
+
+// uint32_t get_4_ubytes(uint8_t *pc) {
+// 	#ifdef __DEBUG_GET_BYTES__
+// 		printf("4_bytes: %d\n", pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24));
+// 	#endif
+// 	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[3] << 24);
+// }
+
+int8_t get_1_byte(uint8_t *pc) {
 	#ifdef __DEBUG_GET_BYTES__
-		printf("4_bytes: %d\n", pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24));
+		printf("1_byte: %c\n", pc[0]);
 	#endif
-	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24);
+	return pc[0];
+}
+
+int16_t get_2_bytes(uint8_t *pc) {
+	#ifdef __DEBUG_GET_BYTES__
+		printf("2_bytes: %hd\n", pc[0] + (pc[1] << 8));
+	#endif
+	return pc[0] + (pc[1] << 8);
+}
+
+int32_t get_4_bytes(uint8_t *pc) {
+	#ifdef __DEBUG_GET_BYTES__
+		printf("4_bytes: %d\n", pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[3] << 24));
+	#endif
+	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[3] << 24);
 }
 
 
@@ -63,7 +88,7 @@ int main(int argc, char const *argv[]) {
 	FILE *fin = fopen(argv[1], "rb");
 
 	// Initialize a stack to hold the program
-	int top = 0;
+	int top = -1;
 	int32_t stack[1 << 16];
 	uint8_t program[1 << 16];
 
@@ -78,6 +103,7 @@ int main(int argc, char const *argv[]) {
 	uint8_t opcode;
 	bool loop = true;
 	clock_t start_time = clock();
+	int flag = 0;
 	while (loop) {
 		opcode = pc[0];
 		switch (opcode) {
@@ -93,7 +119,7 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("JUMP\n");
 				#endif
-				uint16_t jump_addr = get_2_bytes(&pc[1]);
+				uint16_t jump_addr = get_2_ubytes(&pc[1]);
 				pc = &program[jump_addr];
 				break;
 			}
@@ -103,7 +129,7 @@ int main(int argc, char const *argv[]) {
 					printf("JNZ\n");
 				#endif
 				int stack_top = pop(stack, top);
-				uint16_t jump_addr = get_2_bytes(&pc[1]);
+				uint16_t jump_addr = get_2_ubytes(&pc[1]);
 				pc = (stack_top != 0) ? &program[jump_addr] : (pc + 3);
 				break;
 			}
@@ -112,7 +138,7 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("DUP\n");
 				#endif
-				uint8_t i = get_1_byte(&pc[1]);
+				uint8_t i = get_1_ubyte(&pc[1]);
 				int elem = stack[top - i];
 				push(stack, top, elem);
 				pc += 2;
@@ -173,7 +199,7 @@ int main(int argc, char const *argv[]) {
 				#endif
 				int a = pop(stack, top);
 				int b = pop(stack, top);
-				push(stack, top, a - b);
+				push(stack, top, b - a);
 				pc += 1;
 				break;
 			}
@@ -324,6 +350,11 @@ int main(int argc, char const *argv[]) {
 				#endif
 				char ch;
 				if (scanf("%c", &ch) == 1);
+				else {
+					loop = false;
+					printf("Error: Problem with input!\n");
+					break;
+				}
 				push(stack, top, (int32_t)ch);
 				pc += 1;
 				break;
@@ -335,7 +366,12 @@ int main(int argc, char const *argv[]) {
 				#endif
 				int32_t ch = pop(stack, top);
 				printf("%c", (char)ch);
+				#ifdef __DEBUG__
+					printf("\n");
+				#endif
 				pc += 1;
+				// if (ch == '*' && flag == 5) loop = false;
+				// if (ch == '*') flag += 1;
 				break;
 			}
 			case CLOCK:
