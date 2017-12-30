@@ -54,13 +54,6 @@ uint16_t get_2_ubytes(uint8_t *pc) {
 	return pc[0] + (pc[1] << 8);
 }
 
-// uint32_t get_4_ubytes(uint8_t *pc) {
-// 	#ifdef __DEBUG_GET_BYTES__
-// 		printf("4_bytes: %d\n", pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[2] << 24));
-// 	#endif
-// 	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[3] << 24);
-// }
-
 int8_t get_1_byte(uint8_t *pc) {
 	#ifdef __DEBUG_GET_BYTES__
 		printf("1_byte: %c\n", pc[0]);
@@ -368,10 +361,9 @@ int main(int argc, char const *argv[]) {
 				printf("%c", (char)ch);
 				#ifdef __DEBUG__
 					printf("\n");
+					printf("%d\n", ch);
 				#endif
 				pc += 1;
-				// if (ch == '*' && flag == 5) loop = false;
-				// if (ch == '*') flag += 1;
 				break;
 			}
 			case CLOCK:
