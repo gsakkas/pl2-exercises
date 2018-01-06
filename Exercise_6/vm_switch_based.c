@@ -32,6 +32,7 @@
 
 // Debug
 // #define __DEBUG__
+// #define __DEBUG_STACK__
 // #define __DEBUG_GET_BYTES__
 
 
@@ -96,8 +97,15 @@ int main(int argc, char const *argv[]) {
 	uint8_t opcode;
 	bool loop = true;
 	clock_t start_time = clock();
-	int flag = 0;
 	while (loop) {
+		#ifdef __DEBUG_STACK__
+			if (top < 0) printf("stack[-1] = ...\n");
+			else {
+				for (int j = top; j >= 0; j--){
+					printf("stack[%d] = %d\n", j, stack[j]);
+				}
+			}
+		#endif
 		opcode = pc[0];
 		switch (opcode) {
 			case HALT:
@@ -179,8 +187,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("ADD\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				push(stack, top, a + b);
 				pc += 1;
 				break;
@@ -190,9 +198,9 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("SUB\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
-				push(stack, top, b - a);
+				int a = pop(stack, top);
+				push(stack, top, a - b);
 				pc += 1;
 				break;
 			}
@@ -201,8 +209,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("MUL\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				push(stack, top, a * b);
 				pc += 1;
 				break;
@@ -212,8 +220,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("DIV\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				push(stack, top, a / b);
 				pc += 1;
 				break;
@@ -223,8 +231,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("MOD\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				push(stack, top, a % b);
 				pc += 1;
 				break;
@@ -234,8 +242,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("EQ\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int eq = (a == b) ? 1 : 0;
 				push(stack, top, eq);
 				pc += 1;
@@ -246,8 +254,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("NE\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int eq = (a != b) ? 1 : 0;
 				push(stack, top, eq);
 				pc += 1;
@@ -258,8 +266,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("LT\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int eq = (a < b) ? 1 : 0;
 				push(stack, top, eq);
 				pc += 1;
@@ -270,8 +278,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("GT\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int eq = (a > b) ? 1 : 0;
 				push(stack, top, eq);
 				pc += 1;
@@ -282,8 +290,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("LE\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int eq = (a <= b) ? 1 : 0;
 				push(stack, top, eq);
 				pc += 1;
@@ -294,8 +302,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("GE\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int eq = (a >= b) ? 1 : 0;
 				push(stack, top, eq);
 				pc += 1;
@@ -317,8 +325,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("AND\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int and = (a && b) ? 1 : 0;
 				push(stack, top, and);
 				pc += 1;
@@ -329,8 +337,8 @@ int main(int argc, char const *argv[]) {
 				#ifdef __DEBUG__
 					printf("OR\n");
 				#endif
-				int a = pop(stack, top);
 				int b = pop(stack, top);
+				int a = pop(stack, top);
 				int or = (a || b) ? 1 : 0;
 				push(stack, top, or);
 				pc += 1;
@@ -346,7 +354,7 @@ int main(int argc, char const *argv[]) {
 				else {
 					loop = false;
 					printf("Error: Problem with input!\n");
-					break;
+					return -1;
 				}
 				push(stack, top, (int32_t)ch);
 				pc += 1;
@@ -385,5 +393,13 @@ int main(int argc, char const *argv[]) {
 		}
 		if (pc == last_opcode) loop = false;
 	}
+	#ifdef __DEBUG_STACK__
+		if (top < 0) printf("stack[-1] = ...\n");
+		else {
+			for (int j = top; j >= 0; j--){
+				printf("stack[%d] = %d\n", j, stack[j]);
+			}
+		}
+	#endif
 	return 0;
 }
