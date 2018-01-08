@@ -73,18 +73,18 @@ int32_t get_4_bytes(uint8_t *pc) {
 }
 
 
-int main(int argc, char const *argv[]) {
+int32_t main(int32_t argc, char const *argv[]) {
 	// Take program from stdin
 	FILE *fin = fopen(argv[1], "rb");
 
 	// Initialize a stack to hold the program
-	register int top = -1;
+	register int32_t top = -1;
 	int32_t stack[1 << 16];
 	register int32_t stack_top, stack_below_top;
 	uint8_t program[1 << 16];
 
 	// Read the file that contains the program
-	int length = 0;
+	uint16_t length = 0;
 	while (fscanf(fin, "%c", &program[length]) == 1) length++;
 	fclose(fin);
 	uint8_t *last_opcode = &program[--length];
@@ -98,7 +98,7 @@ int main(int argc, char const *argv[]) {
 		#ifdef __DEBUG_STACK__
 			if (top < 0) printf("stack[-1] = ...\n");
 			else {
-				for (int j = top; j >= 0; j--){
+				for (int32_t j = top; j >= 0; j--){
 					printf("stack[%d] = %d\n", j, stack[j]);
 				}
 			}
@@ -388,7 +388,7 @@ int main(int argc, char const *argv[]) {
 	#ifdef __DEBUG_STACK__
 		if (top < 0) printf("stack[-1] = ...\n");
 		else {
-			for (int j = top; j >= 0; j--){
+			for (int32_t j = top; j >= 0; j--){
 				printf("stack[%d] = %d\n", j, stack[j]);
 			}
 		}
