@@ -245,8 +245,8 @@ int main(int argc, char const *argv[]) {
 			#ifdef __DEBUG__
 				printf("JNZ\n");
 			#endif
-			int32_t stack_top = pop(stack, top);
 			uint16_t jump_addr = get_2_ubytes(&pc[1]);
+			int32_t stack_top = pop(stack, top);
 			pc = (stack_top != 0) ? &program[jump_addr] : (pc + 3);
 			NEXT_INSTR;
 		}
@@ -267,7 +267,7 @@ int main(int argc, char const *argv[]) {
 				printf("DROP\n");
 			#endif
 			pc += 1;
-			pop(stack, top);
+			top--;
 			NEXT_INSTR;
 		}
 		push4_label:
@@ -306,9 +306,8 @@ int main(int argc, char const *argv[]) {
 				printf("ADD\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			push(stack, top, a + b);
+			stack[top - 1] += stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		sub_label:
@@ -317,9 +316,8 @@ int main(int argc, char const *argv[]) {
 				printf("SUB\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			push(stack, top, a - b);
+			stack[top - 1] -= stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		mul_label:
@@ -328,9 +326,8 @@ int main(int argc, char const *argv[]) {
 				printf("MUL\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			push(stack, top, a * b);
+			stack[top - 1] *= stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		div_label:
@@ -339,9 +336,8 @@ int main(int argc, char const *argv[]) {
 				printf("DIV\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			push(stack, top, a / b);
+			stack[top - 1] /= stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		mod_label:
@@ -350,9 +346,8 @@ int main(int argc, char const *argv[]) {
 				printf("MOD\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			push(stack, top, a % b);
+			stack[top - 1] %= stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		eq_label:
@@ -361,10 +356,8 @@ int main(int argc, char const *argv[]) {
 				printf("EQ\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t eq = (a == b) ? 1 : 0;
-			push(stack, top, eq);
+			stack[top - 1] = stack[top - 1] == stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		ne_label:
@@ -373,10 +366,8 @@ int main(int argc, char const *argv[]) {
 				printf("NE\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t eq = (a != b) ? 1 : 0;
-			push(stack, top, eq);
+			stack[top - 1] = stack[top - 1] != stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		lt_label:
@@ -385,10 +376,8 @@ int main(int argc, char const *argv[]) {
 				printf("LT\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t eq = (a < b) ? 1 : 0;
-			push(stack, top, eq);
+			stack[top - 1] = stack[top - 1] < stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		gt_label:
@@ -397,10 +386,8 @@ int main(int argc, char const *argv[]) {
 				printf("GT\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t eq = (a > b) ? 1 : 0;
-			push(stack, top, eq);
+			stack[top - 1] = stack[top - 1] > stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		le_label:
@@ -409,10 +396,8 @@ int main(int argc, char const *argv[]) {
 				printf("LE\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t eq = (a <= b) ? 1 : 0;
-			push(stack, top, eq);
+			stack[top - 1] = stack[top - 1] <= stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		ge_label:
@@ -421,10 +406,8 @@ int main(int argc, char const *argv[]) {
 				printf("GE\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t eq = (a >= b) ? 1 : 0;
-			push(stack, top, eq);
+			stack[top - 1] = stack[top - 1] >= stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		not_label:
@@ -433,9 +416,7 @@ int main(int argc, char const *argv[]) {
 				printf("NOT\n");
 			#endif
 			pc += 1;
-			int32_t stack_top = pop(stack, top);
-			int32_t not = (stack_top == 0) ? 1 : 0;
-			push(stack, top, not);
+			stack[top] = !stack[top];
 			NEXT_INSTR;
 		}
 		and_label:
@@ -444,10 +425,8 @@ int main(int argc, char const *argv[]) {
 				printf("AND\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t and = (a && b) ? 1 : 0;
-			push(stack, top, and);
+			stack[top - 1] = stack[top - 1] && stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		or_label:
@@ -456,10 +435,8 @@ int main(int argc, char const *argv[]) {
 				printf("OR\n");
 			#endif
 			pc += 1;
-			int32_t b = pop(stack, top);
-			int32_t a = pop(stack, top);
-			int32_t or = (a || b) ? 1 : 0;
-			push(stack, top, or);
+			stack[top - 1] = stack[top - 1] || stack[top];
+			top--;
 			NEXT_INSTR;
 		}
 		input_label:
@@ -469,9 +446,7 @@ int main(int argc, char const *argv[]) {
 			#endif
 			pc += 1;
 			char ch;
-			if (scanf("%c", &ch) == 1);
-			else {
-				loop = false;
+			if (scanf("%c", &ch) != 1) {
 				printf("Error: Problem with input!\n");
 				return -1;
 			}
