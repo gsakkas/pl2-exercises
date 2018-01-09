@@ -38,51 +38,19 @@
 
 // Helper functions
 #define push(STACK, TOP, ELEM) (STACK[++TOP] = ELEM)
-
 #define pop(STACK, TOP) (STACK[TOP--])
-
-uint8_t get_1_ubyte(uint64_t *pc) {
-	#ifdef __DEBUG_GET_BYTES__
-		printf("1_byte: %c\n", pc[0]);
-	#endif
-	return pc[0];
-}
-
-uint16_t get_2_ubytes(uint64_t *pc) {
-	#ifdef __DEBUG_GET_BYTES__
-		printf("2_bytes: %hd\n", pc[0] + (pc[1] << 8));
-	#endif
-	return pc[0] + (pc[1] << 8);
-}
-
-int8_t get_1_byte(uint64_t *pc) {
-	#ifdef __DEBUG_GET_BYTES__
-		printf("1_byte: %c\n", pc[0]);
-	#endif
-	return pc[0];
-}
-
-int16_t get_2_bytes(uint64_t *pc) {
-	#ifdef __DEBUG_GET_BYTES__
-		printf("2_bytes: %hd\n", pc[0] + (pc[1] << 8));
-	#endif
-	return pc[0] + (pc[1] << 8);
-}
-
-int32_t get_4_bytes(uint64_t *pc) {
-	#ifdef __DEBUG_GET_BYTES__
-		printf("4_bytes: %d\n", pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[3] << 24));
-	#endif
-	return pc[0] + (pc[1] << 8) + (pc[2] << 16) + (pc[3] << 24);
-}
-
+#define get_1_ubyte(PC) program[PC + 1]
+#define get_2_ubytes(PC) program[PC + 1] + (program[PC + 2] << 8)
+#define get_1_byte(PC) program[PC + 1]
+#define get_2_bytes(PC) program[PC + 1] + (program[PC + 2] << 8)
+#define get_4_bytes(PC) program[PC + 1] + (program[PC + 2] << 8) + (program[PC + 3] << 16) + (program[PC + 4] << 24)
 
 // Directly threaded interpreter's next instruction
 #ifndef __DEBUG_STACK__
-	#define NEXT_INSTR goto **(void **)(pc)
+	#define NEXT_INSTR goto *program[pc]
 #else
 	#define NEXT_INSTR goto print_stack_label
-	#define NEXT_INSTR_ORIG goto **(void **)(pc)
+	#define NEXT_INSTR_ORIG goto *program[pc]
 #endif
 #define EXIT goto exit_label
 
@@ -206,281 +174,276 @@ int main(int argc, char const *argv[]) {
 	fclose(fin);
 
 	// The Bytecode Interpreter
-	register uint64_t *pc = &program[0];
-	register bool loop = true;
+	register uint32_t pc = 0;
 	clock_t start_time = clock();
 	NEXT_INSTR;
-	while (loop) {
-		#ifdef __DEBUG_STACK__
-		print_stack_label:
-			if (top < 0) printf("stack[-1] = ...\n");
-			else {
-				for (int32_t j = top; j >= 0; j--){
-					printf("stack[%d] = %d\n", j, stack[j]);
-				}
+	#ifdef __DEBUG_STACK__
+	print_stack_label:
+		if (top < 0) printf("stack[-1] = ...\n");
+		else {
+			for (int32_t j = top; j >= 0; j--){
+				printf("stack[%d] = %d\n", j, stack[j]);
 			}
-			NEXT_INSTR_ORIG;
+		}
+		NEXT_INSTR_ORIG;
+	#endif
+	halt_label:
+	{
+		#ifdef __DEBUG__
+			printf("HALT\n");
 		#endif
-		halt_label:
-		{
-			#ifdef __DEBUG__
-				printf("HALT\n");
-			#endif
-			EXIT;
+		EXIT;
+	}
+	jump_label:
+	{	
+		#ifdef __DEBUG__
+			printf("JUMP\n");
+		#endif
+		pc = get_2_ubytes(pc);
+		NEXT_INSTR;
+	}
+	jnz_label:
+	{
+		#ifdef __DEBUG__
+			printf("JNZ\n");
+		#endif
+		int32_t stack_top = pop(stack, top);
+		pc = (stack_top != 0) ? get_2_ubytes(pc) : (pc + 3);
+		NEXT_INSTR;
+	}
+	dup_label:
+	{	
+		#ifdef __DEBUG__
+			printf("DUP\n");
+		#endif
+		uint8_t i = get_1_ubyte(pc);
+		pc += 2;
+		int32_t elem = stack[top - i];
+		push(stack, top, elem);
+		NEXT_INSTR;
+	}
+	drop_label:
+	{
+		#ifdef __DEBUG__
+			printf("DROP\n");
+		#endif
+		pc += 1;
+		top--;
+		NEXT_INSTR;
+	}
+	push4_label:
+	{
+		#ifdef __DEBUG__
+			printf("PUSH4\n");
+		#endif
+		int32_t num = get_4_bytes(pc);
+		pc += 5;
+		push(stack, top, num);
+		NEXT_INSTR;
+	}
+	push2_label:
+	{
+		#ifdef __DEBUG__
+			printf("PUSH2\n");
+		#endif
+		int16_t num = get_2_bytes(pc);
+		pc += 3;
+		push(stack, top, num);
+		NEXT_INSTR;
+	}
+	push1_label:
+	{
+		#ifdef __DEBUG__
+			printf("PUSH1\n");
+		#endif
+		int8_t num = get_1_byte(pc);
+		pc += 2;
+		push(stack, top, num);
+		NEXT_INSTR;
+	}
+	add_label:
+	{
+		#ifdef __DEBUG__
+			printf("ADD\n");
+		#endif
+		pc += 1;
+		stack[top - 1] += stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	sub_label:
+	{
+		#ifdef __DEBUG__
+			printf("SUB\n");
+		#endif
+		pc += 1;
+		stack[top - 1] -= stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	mul_label:
+	{
+		#ifdef __DEBUG__
+			printf("MUL\n");
+		#endif
+		pc += 1;
+		stack[top - 1] *= stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	div_label:
+	{
+		#ifdef __DEBUG__
+			printf("DIV\n");
+		#endif
+		pc += 1;
+		stack[top - 1] /= stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	mod_label:
+	{
+		#ifdef __DEBUG__
+			printf("MOD\n");
+		#endif
+		pc += 1;
+		stack[top - 1] %= stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	eq_label:
+	{
+		#ifdef __DEBUG__
+			printf("EQ\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] == stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	ne_label:
+	{
+		#ifdef __DEBUG__
+			printf("NE\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] != stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	lt_label:
+	{
+		#ifdef __DEBUG__
+			printf("LT\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] < stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	gt_label:
+	{
+		#ifdef __DEBUG__
+			printf("GT\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] > stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	le_label:
+	{
+		#ifdef __DEBUG__
+			printf("LE\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] <= stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	ge_label:
+	{
+		#ifdef __DEBUG__
+			printf("GE\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] >= stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	not_label:
+	{
+		#ifdef __DEBUG__
+			printf("NOT\n");
+		#endif
+		pc += 1;
+		stack[top] = !stack[top];
+		NEXT_INSTR;
+	}
+	and_label:
+	{
+		#ifdef __DEBUG__
+			printf("AND\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] && stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	or_label:
+	{
+		#ifdef __DEBUG__
+			printf("OR\n");
+		#endif
+		pc += 1;
+		stack[top - 1] = stack[top - 1] || stack[top];
+		top--;
+		NEXT_INSTR;
+	}
+	input_label:
+	{
+		#ifdef __DEBUG__
+			printf("INPUT\n");
+		#endif
+		pc += 1;
+		char ch;
+		if (scanf("%c", &ch) != 1) {
+			printf("Error: Problem with input!\n");
+			return -1;
 		}
-		jump_label:
-		{	
-			#ifdef __DEBUG__
-				printf("JUMP\n");
-			#endif
-			uint16_t jump_addr = get_2_ubytes(&pc[1]);
-			pc = &program[jump_addr];
-			NEXT_INSTR;
-		}
-		jnz_label:
-		{
-			#ifdef __DEBUG__
-				printf("JNZ\n");
-			#endif
-			uint16_t jump_addr = get_2_ubytes(&pc[1]);
-			int32_t stack_top = pop(stack, top);
-			pc = (stack_top != 0) ? &program[jump_addr] : (pc + 3);
-			NEXT_INSTR;
-		}
-		dup_label:
-		{	
-			#ifdef __DEBUG__
-				printf("DUP\n");
-			#endif
-			uint8_t i = get_1_ubyte(&pc[1]);
-			pc += 2;
-			int32_t elem = stack[top - i];
-			push(stack, top, elem);
-			NEXT_INSTR;
-		}
-		drop_label:
-		{
-			#ifdef __DEBUG__
-				printf("DROP\n");
-			#endif
-			pc += 1;
-			top--;
-			NEXT_INSTR;
-		}
-		push4_label:
-		{
-			#ifdef __DEBUG__
-				printf("PUSH4\n");
-			#endif
-			int32_t num = get_4_bytes(&pc[1]);
-			pc += 5;
-			push(stack, top, num);
-			NEXT_INSTR;
-		}
-		push2_label:
-		{
-			#ifdef __DEBUG__
-				printf("PUSH2\n");
-			#endif
-			int16_t num = get_2_bytes(&pc[1]);
-			pc += 3;
-			push(stack, top, num);
-			NEXT_INSTR;
-		}
-		push1_label:
-		{
-			#ifdef __DEBUG__
-				printf("PUSH1\n");
-			#endif
-			int8_t num = get_1_byte(&pc[1]);
-			pc += 2;
-			push(stack, top, num);
-			NEXT_INSTR;
-		}
-		add_label:
-		{
-			#ifdef __DEBUG__
-				printf("ADD\n");
-			#endif
-			pc += 1;
-			stack[top - 1] += stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		sub_label:
-		{
-			#ifdef __DEBUG__
-				printf("SUB\n");
-			#endif
-			pc += 1;
-			stack[top - 1] -= stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		mul_label:
-		{
-			#ifdef __DEBUG__
-				printf("MUL\n");
-			#endif
-			pc += 1;
-			stack[top - 1] *= stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		div_label:
-		{
-			#ifdef __DEBUG__
-				printf("DIV\n");
-			#endif
-			pc += 1;
-			stack[top - 1] /= stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		mod_label:
-		{
-			#ifdef __DEBUG__
-				printf("MOD\n");
-			#endif
-			pc += 1;
-			stack[top - 1] %= stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		eq_label:
-		{
-			#ifdef __DEBUG__
-				printf("EQ\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] == stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		ne_label:
-		{
-			#ifdef __DEBUG__
-				printf("NE\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] != stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		lt_label:
-		{
-			#ifdef __DEBUG__
-				printf("LT\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] < stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		gt_label:
-		{
-			#ifdef __DEBUG__
-				printf("GT\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] > stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		le_label:
-		{
-			#ifdef __DEBUG__
-				printf("LE\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] <= stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		ge_label:
-		{
-			#ifdef __DEBUG__
-				printf("GE\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] >= stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		not_label:
-		{
-			#ifdef __DEBUG__
-				printf("NOT\n");
-			#endif
-			pc += 1;
-			stack[top] = !stack[top];
-			NEXT_INSTR;
-		}
-		and_label:
-		{
-			#ifdef __DEBUG__
-				printf("AND\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] && stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		or_label:
-		{
-			#ifdef __DEBUG__
-				printf("OR\n");
-			#endif
-			pc += 1;
-			stack[top - 1] = stack[top - 1] || stack[top];
-			top--;
-			NEXT_INSTR;
-		}
-		input_label:
-		{
-			#ifdef __DEBUG__
-				printf("INPUT\n");
-			#endif
-			pc += 1;
-			char ch;
-			if (scanf("%c", &ch) != 1) {
-				printf("Error: Problem with input!\n");
-				return -1;
-			}
-			push(stack, top, (int32_t)ch);
-			NEXT_INSTR;
-		}
-		ouput_label:
-		{
-			#ifdef __DEBUG__
-				printf("OUTPUT\n");
-			#endif
-			pc += 1;
-			int32_t ch = pop(stack, top);
-			printf("%c", (char)ch);
-			#ifdef __DEBUG__
-				printf("\n");
-				printf("%d\n", ch);
-			#endif
-			NEXT_INSTR;
-		}
-		clock_label:
-		{	
-			#ifdef __DEBUG__
-				printf("CLOCK\n");
-			#endif
-			pc += 1;
-			double time_spent = (double)(clock() - start_time) / CLOCKS_PER_SEC;
-			printf("%0.6lf\n", time_spent);
-			NEXT_INSTR;
-		}
-		not_valid_label:
-		{
-			#ifdef __DEBUG__
-				printf("NOT_AN_OPCODE\n");
-			#endif
-			EXIT;
-		}
+		push(stack, top, (int32_t)ch);
+		NEXT_INSTR;
+	}
+	ouput_label:
+	{
+		#ifdef __DEBUG__
+			printf("OUTPUT\n");
+		#endif
+		pc += 1;
+		int32_t ch = pop(stack, top);
+		printf("%c", (char)ch);
+		#ifdef __DEBUG__
+			printf("\n");
+			printf("%d\n", ch);
+		#endif
+		NEXT_INSTR;
+	}
+	clock_label:
+	{	
+		#ifdef __DEBUG__
+			printf("CLOCK\n");
+		#endif
+		pc += 1;
+		double time_spent = (double)(clock() - start_time) / CLOCKS_PER_SEC;
+		printf("%0.6lf\n", time_spent);
+		NEXT_INSTR;
+	}
+	not_valid_label:
+	{
+		#ifdef __DEBUG__
+			printf("NOT_AN_OPCODE\n");
+		#endif
+		EXIT;
 	}
 	exit_label:
 	#ifdef __DEBUG_STACK__
