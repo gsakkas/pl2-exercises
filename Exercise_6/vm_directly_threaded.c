@@ -77,7 +77,7 @@ int32_t get_4_bytes(uint64_t *pc) {
 }
 
 
-// Indirectly threaded interpreter's next instruction
+// Directly threaded interpreter's next instruction
 #ifndef __DEBUG_STACK__
 	#define NEXT_INSTR goto **(void **)(pc)
 #else
@@ -204,9 +204,6 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 	fclose(fin);
-	// for (uint16_t idx = 0; idx < length; idx++) {
-	// 	program
-	// }
 
 	// The Bytecode Interpreter
 	register uint64_t *pc = &program[0];
