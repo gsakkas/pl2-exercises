@@ -35,7 +35,7 @@
 #define HD 0x2c
 #define TL 0x2d
 
-#define STARTING_MAX_ALLOCS 1000000
+#define STARTING_MAX_ALLOCS 10000000
 
 // Debug
 // #define __DEBUG__
@@ -94,13 +94,13 @@ void mark_cons(heap_node *node) {
 	return;
 }
 
-inline void mark(int64_t *stack, bool *types, int32_t top, heap_node *head) {
+void mark(int64_t *stack, bool *types, int32_t top, heap_node *head) {
 	for (int i = 0; i <= top; i++)
 		if (types[i]) mark_cons((heap_node*)stack[i]);
 	return;
 }
 
-inline heap_node* sweep(heap_node *head, uint32_t *num_of_cons) {
+heap_node* sweep(heap_node *head, uint32_t *num_of_cons) {
 	heap_node *heap_head = head;
 	heap_node *current = head, *previous = head;
 	while (current) {
@@ -543,10 +543,15 @@ int main(int argc, char const *argv[]) {
 		types[top] = true;
 		if (num_of_cons > max_allocations){
 			#ifdef __DEBUG_GC__
-				printf("HERE\n");
+				printf("Garbage collection is executed!\n");
 			#endif
 			gc();
-			max_allocations = num_of_cons << 1;
+			if (num_of_cons < STARTING_MAX_ALLOCS / 10)
+				max_allocations = STARTING_MAX_ALLOCS;
+			else if (num_of_cons > STARTING_MAX_ALLOCS * 11 / 10)
+				max_allocations = STARTING_MAX_ALLOCS << 1;
+			else
+				max_allocations = num_of_cons << 1;
 		}
 		NEXT_INSTR;
 	}
