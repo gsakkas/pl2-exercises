@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <string.h>
 
 // op-codes
 #define HALT 0x00
@@ -34,7 +35,7 @@
 #define HD 0x2c
 #define TL 0x2d
 
-#define MAX_ALLOCATIONS 1000000
+#define STARTING_MAX_ALLOCS 1000000
 
 // Debug
 // #define __DEBUG__
@@ -74,7 +75,7 @@ struct heap_node_t {
 typedef struct heap_node_t heap_node;
 
 // Create Heap node
-heap_node* new(int64_t hd, bool hd_type, int64_t tl, bool tl_type) {
+inline heap_node* new(int64_t hd, bool hd_type, int64_t tl, bool tl_type) {
 	heap_node *node = malloc(sizeof(heap_node));
 	node->hd = hd;
 	node->hd_type = hd_type;
@@ -93,13 +94,14 @@ void mark_cons(heap_node *node) {
 	return;
 }
 
-void mark(int64_t *stack, bool *types, int32_t top, heap_node *head) {
+inline void mark(int64_t *stack, bool *types, int32_t top, heap_node *head) {
 	for (int i = 0; i <= top; i++)
 		if (types[i]) mark_cons((heap_node*)stack[i]);
 	return;
 }
 
-heap_node* sweep(heap_node *head, uint32_t *num_of_cons) {
+inline heap_node* sweep(heap_node *head, uint32_t *num_of_cons) {
+	heap_node *heap_head = head;
 	heap_node *current = head, *previous = head;
 	while (current) {
 		if (current->mark) {
@@ -109,19 +111,19 @@ heap_node* sweep(heap_node *head, uint32_t *num_of_cons) {
 		}
 		else {
 			current = current->next;
-			if (current == head) {
+			if (current == heap_head) {
 				free(previous);
 				previous = current;
-				head = current;
+				heap_head = current;
 			}
 			else {
 				free(previous->next);
 				previous->next = current;
-				num_of_cons--;
 			}
+			(*num_of_cons)--;
 		}
 	}
-	return head;
+	return heap_head;
 }
 
 #define gc() mark(&stack[0], &types[0], top, heap_head); heap_head = sweep(heap_head, &num_of_cons);
@@ -236,6 +238,9 @@ int main(int argc, char const *argv[]) {
 	uint64_t program[1 << 16];
 	uint8_t opcode_byte;
 
+	// Initialize types to false (= int)
+	memset(&types, 0, sizeof(types));
+
 	// Read the file that contains the program
 	uint16_t length = 0;
 	while (fscanf(fin, "%c", &opcode_byte) == 1) {
@@ -254,6 +259,7 @@ int main(int argc, char const *argv[]) {
 	// The Bytecode Interpreter
 	register uint32_t pc = 0;
 	register heap_node *heap_head = NULL;
+	register uint64_t max_allocations = STARTING_MAX_ALLOCS;
 	uint32_t num_of_cons = 0;
 	clock_t start_time = clock();
 	NEXT_INSTR;
@@ -262,7 +268,8 @@ int main(int argc, char const *argv[]) {
 		if (top < 0) printf("stack[-1] = ...\n");
 		else {
 			for (int32_t j = top; j >= 0; j--){
-				printf("stack[%d] = %ld\n", j, stack[j]);
+				if (types[j]) printf("stack[%d] = %p\n", j, (heap_node*)stack[j]);
+				else printf("stack[%d] = %ld\n", j, stack[j]);
 			}
 		}
 		NEXT_INSTR_ORIG;
@@ -299,7 +306,9 @@ int main(int argc, char const *argv[]) {
 		uint8_t i = get_1_ubyte(pc);
 		pc += 2;
 		int32_t elem = stack[top - i];
+		bool type = types[top - i];
 		push(stack, top, elem);
+		types[top] = type;
 		NEXT_INSTR;
 	}
 	drop_label:
@@ -529,13 +538,15 @@ int main(int argc, char const *argv[]) {
 		top--;
 		node->next = heap_head;
 		heap_head = node;
-		stack[top] = (int64_t)node;
+		node = NULL;
+		stack[top] = (intptr_t)heap_head;
 		types[top] = true;
-		if (num_of_cons > MAX_ALLOCATIONS){
+		if (num_of_cons > max_allocations){
 			#ifdef __DEBUG_GC__
 				printf("HERE\n");
 			#endif
 			gc();
+			max_allocations = num_of_cons << 1;
 		}
 		NEXT_INSTR;
 	}
@@ -573,7 +584,8 @@ int main(int argc, char const *argv[]) {
 		if (top < 0) printf("stack[-1] = ...\n");
 		else {
 			for (int32_t j = top; j >= 0; j--){
-				printf("stack[%d] = %ld\n", j, stack[j]);
+				if (types[j]) printf("stack[%d] = %p\n", j, (heap_node*)stack[j]);
+				else printf("stack[%d] = %ld\n", j, stack[j]);
 			}
 		}
 	#endif
