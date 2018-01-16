@@ -36,7 +36,7 @@
 #define TL 0x2d
 
 // If program gives Segmentation Fault, try to cut in half this number
-#define STARTING_MAX_ALLOCS 10000000
+#define STARTING_MAX_ALLOCS 1<<24
 
 // Debug
 // #define __DEBUG__
@@ -69,71 +69,77 @@ struct heap_node_t {
 	bool hd_type;
 	int64_t tl;
 	bool tl_type;
-	bool mark;
+	uint16_t mark;
 	struct heap_node_t *next; 
 };
 
 typedef struct heap_node_t heap_node;
 
 // Create Heap node
-heap_node* new(int64_t hd, bool hd_type, int64_t tl, bool tl_type, heap_node **clean) {
-	heap_node *node;
+inline heap_node* new(int64_t hd, bool hd_type, int64_t tl, bool tl_type, heap_node** clean, heap_node* new_node) {
+	heap_node* node;
 	if (*clean) {
 		node = (*clean);
 		(*clean) = (*clean)->next;
 	}
 	else {
-		node = malloc(sizeof(heap_node));
+		node = new_node;
 	}
 	node->hd = hd;
 	node->hd_type = hd_type;
 	node->tl = tl;
 	node->tl_type = tl_type;
-	node->mark = false;
+	node->mark = 0;
 	return node;
 };
 
 // Garbage collection - Mark-and-Sweep algorithm
-void mark_cons(heap_node *node) {
-	if (node->mark) return;
-	node->mark = true;
-	if (node->hd_type) mark_cons((heap_node*)node->hd);
-	if (node->tl_type) mark_cons((heap_node*)node->tl);
+void mark_cons(heap_node* node) {
+	node->mark++;
+	if (node->hd_type) {
+		heap_node* hd = (heap_node*)node->hd;
+		if (!hd->mark) mark_cons(hd);
+	}
+	if (node->tl_type) {
+		heap_node* tl = (heap_node*)node->tl;
+		if (!tl->mark) mark_cons(tl);
+	}
 	return;
 }
 
 void mark(int64_t *stack, bool *types, int32_t top) {
 	for (int i = 0; i <= top; i++)
-		if (types[i]) mark_cons((heap_node*)stack[i]);
+		if (types[i]) {
+			heap_node* node = (heap_node*)stack[i];
+			if (!node->mark) mark_cons(node);
+		}
 	return;
 }
 
-heap_node* sweep(heap_node *head, heap_node **clean, uint32_t *num_of_cons) {
-	heap_node *heap_head = head;
-	heap_node *current = head, *previous = head;
+heap_node* sweep(heap_node* head, heap_node** clean, uint32_t *num_of_cons) {
+	heap_node* heap_head = head;
+	heap_node* current = head, *previous = head;
 	while (current) {
 		if (current->mark) {
-			current->mark = false;
+			current->mark--;
 			previous = current;
 			current = current->next;
 		}
 		else {
 			if (current == heap_head) {
-				heap_node *temp = current;
+				heap_node* temp = current;
 				current = current->next;
 				previous = current;
 				heap_head = current;
 				temp->next = (*clean);
 				(*clean) = temp;
-				temp = NULL;
 			}
 			else {
-				heap_node *temp = current;
+				heap_node* temp = current;
 				current = current->next;
 				previous->next = current;
 				temp->next = (*clean);
 				(*clean) = temp;
-				temp = NULL;
 			}
 			(*num_of_cons)--;
 		}
@@ -273,10 +279,12 @@ int main(int argc, char const *argv[]) {
 
 	// The Bytecode Interpreter
 	register uint32_t pc = 0;
-	heap_node *heap_head = NULL;
-	heap_node *clean = NULL;
-	register uint64_t max_allocations = STARTING_MAX_ALLOCS;
+	register heap_node* heap_head = NULL;
+	heap_node* clean = NULL;
+	uint32_t max_allocations = STARTING_MAX_ALLOCS;
 	uint32_t num_of_cons = 0;
+	heap_node* new_nodes;
+	register bool first_time = true;
 	clock_t start_time = clock();
 	NEXT_INSTR;
 	#ifdef __DEBUG_STACK__
@@ -548,8 +556,12 @@ int main(int argc, char const *argv[]) {
 		#ifdef __DEBUG__
 			printf("CONS\n");
 		#endif
+		if (first_time) {
+			new_nodes = malloc(sizeof(heap_node) * (max_allocations + 1));
+			first_time = false;
+		}
 		pc += 1;
-		heap_node *node = new(stack[top - 1], types[top - 1], stack[top], types[top], &clean);
+		heap_node* node = new(stack[top - 1], types[top - 1], stack[top], types[top], &clean, new_nodes++);
 		num_of_cons++;
 		top--;
 		node->next = heap_head;
@@ -576,7 +588,7 @@ int main(int argc, char const *argv[]) {
 			printf("HD\n");
 		#endif
 		pc += 1;
-		heap_node *node = (heap_node*)stack[top];
+		heap_node* node = (heap_node*)stack[top];
 		stack[top] = node->hd;
 		types[top] = node->hd_type;
 		NEXT_INSTR;
@@ -587,7 +599,7 @@ int main(int argc, char const *argv[]) {
 			printf("TL\n");
 		#endif
 		pc += 1;
-		heap_node *node = (heap_node*)stack[top];
+		heap_node* node = (heap_node*)stack[top];
 		stack[top] = node->tl;
 		types[top] = node->tl_type;
 		NEXT_INSTR;	
