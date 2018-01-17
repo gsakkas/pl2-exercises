@@ -36,7 +36,8 @@
 #define TL 0x2d
 
 // If program gives Segmentation Fault, try to cut in half this number
-#define STARTING_MAX_ALLOCS 1<<24
+#define STARTING_MAX_ALLOCS (1<<24)
+#define BLOCK_SIZE 64
 
 // Debug
 // #define __DEBUG__
@@ -69,32 +70,36 @@ struct heap_node_t {
 	bool hd_type;
 	int64_t tl;
 	bool tl_type;
-	uint16_t mark;
+	uint8_t mark;
+	uint8_t old;
 	struct heap_node_t *next; 
 };
 
 typedef struct heap_node_t heap_node;
 
 // Create Heap node
-inline heap_node* new(int64_t hd, bool hd_type, int64_t tl, bool tl_type, heap_node** clean, heap_node* new_node) {
+inline heap_node* new(int64_t hd, bool hd_type, int64_t tl, bool tl_type, heap_node** clean, heap_node** new_node) {
 	heap_node* node;
 	if (*clean) {
 		node = (*clean);
 		(*clean) = (*clean)->next;
 	}
 	else {
-		node = new_node;
+		node = (*new_node);
+		(*new_node)++;
 	}
 	node->hd = hd;
 	node->hd_type = hd_type;
 	node->tl = tl;
 	node->tl_type = tl_type;
 	node->mark = 0;
+	node->old = 0;
 	return node;
 };
 
-// Garbage collection - Mark-and-Sweep algorithm
+// Garbage collection - Generational Mark-and-Sweep algorithm
 void mark_cons(heap_node* node) {
+	if (node->old) return;
 	node->mark++;
 	if (node->hd_type) {
 		heap_node* hd = (heap_node*)node->hd;
@@ -116,12 +121,13 @@ void mark(int64_t *stack, bool *types, int32_t top) {
 	return;
 }
 
-heap_node* sweep(heap_node* head, heap_node** clean, uint32_t *num_of_cons) {
+heap_node* sweep(heap_node* head, heap_node** last, heap_node** clean, uint32_t *num_of_cons) {
 	heap_node* heap_head = head;
 	heap_node* current = head, *previous = head;
 	while (current) {
 		if (current->mark) {
 			current->mark--;
+			current->old++;
 			previous = current;
 			current = current->next;
 		}
@@ -144,10 +150,12 @@ heap_node* sweep(heap_node* head, heap_node** clean, uint32_t *num_of_cons) {
 			(*num_of_cons)--;
 		}
 	}
+	*last = previous;
 	return heap_head;
 }
 
-#define gc() mark(&stack[0], &types[0], top); heap_head = sweep(heap_head, &clean, &num_of_cons);
+#define gc() mark(&stack[0], &types[0], top); heap_head = sweep(heap_head, &last, &clean, &num_of_cons);
+#define gc_old() mark(&stack[0], &types[0], top); old_heap_head = sweep(old_heap_head, &last, &clean, &num_of_old_cons);
 
 int main(int argc, char const *argv[]) {
 	// Indirectly threaded interpreter's label table
@@ -280,11 +288,15 @@ int main(int argc, char const *argv[]) {
 	// The Bytecode Interpreter
 	register uint32_t pc = 0;
 	register heap_node* heap_head = NULL;
+	register heap_node* old_heap_head = NULL;
 	heap_node* clean = NULL;
-	uint32_t max_allocations = STARTING_MAX_ALLOCS;
+	heap_node* last = NULL;
+	uint32_t max_allocations = (STARTING_MAX_ALLOCS) >> 2;
 	uint32_t num_of_cons = 0;
+	uint32_t num_of_old_cons = 0;
 	heap_node* new_nodes;
 	register bool first_time = true;
+	heap_node* last_addr = NULL;
 	clock_t start_time = clock();
 	NEXT_INSTR;
 	#ifdef __DEBUG_STACK__
@@ -557,28 +569,35 @@ int main(int argc, char const *argv[]) {
 			printf("CONS\n");
 		#endif
 		if (first_time) {
-			new_nodes = malloc(sizeof(heap_node) * (max_allocations + 1));
+			new_nodes = malloc(sizeof(heap_node) * BLOCK_SIZE);
 			first_time = false;
+			last_addr = &new_nodes[BLOCK_SIZE - 1];
 		}
 		pc += 1;
-		heap_node* node = new(stack[top - 1], types[top - 1], stack[top], types[top], &clean, new_nodes++);
+		heap_node* node = new(stack[top - 1], types[top - 1], stack[top], types[top], &clean, &new_nodes);
+		if (last_addr == new_nodes) first_time = true;
 		num_of_cons++;
 		top--;
 		node->next = heap_head;
 		heap_head = node;
 		stack[top] = (intptr_t)node;
 		types[top] = true;
-		if (num_of_cons > max_allocations){
+		if (num_of_cons + max_allocations >= STARTING_MAX_ALLOCS){
 			#ifdef __DEBUG_GC__
 				printf("Garbage collection is executed!\n");
 			#endif
 			gc();
-			// if (num_of_cons < STARTING_MAX_ALLOCS / 10)
-			// 	max_allocations = STARTING_MAX_ALLOCS;
-			// else if (num_of_cons > STARTING_MAX_ALLOCS * 11 / 10)
-			// 	max_allocations = STARTING_MAX_ALLOCS << 1;
-			// else
-			// 	max_allocations = num_of_cons << 1;
+			last->next = old_heap_head;
+			old_heap_head = heap_head;
+			heap_head = NULL;
+			num_of_old_cons += num_of_cons;
+			num_of_cons = 0;
+			if (num_of_old_cons >= max_allocations) {
+				#ifdef __DEBUG_GC__
+					printf("Old garbage collection is executed!\n");
+				#endif
+				gc_old();
+			}
 		}
 		NEXT_INSTR;
 	}
