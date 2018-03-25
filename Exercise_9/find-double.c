@@ -1,5 +1,8 @@
-/* Run with:
+/*
+ * Frama-C version: Sulfur-20171101
+ * Alt-Ergo version: 1.30
  *
+ * Run with:
  * frama-c -wp -wp-prover alt-ergo -wp-rte -wp-timeout 10 -wp-verbose 0 find-double.c -then -report
  *
  */
