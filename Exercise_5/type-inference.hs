@@ -1,4 +1,4 @@
-{-# OPTIONS_gHC -O2 -optc-O2 #-}
+{-# OPTIONS_GHC -O2 -optc-O2 #-}
 
 import Data.Char
 import System.IO
