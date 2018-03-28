@@ -1,3 +1,17 @@
+{- Author:    Georgios Sakkas
+ - Compliler: Glasgow Haskell Compiler, Version 7.10.3
+ -
+ - Compile with: ghc densem.hs
+ - Run with:     ./densem < [input-file]
+ -
+ - OR
+ -
+ - Run with:      ghci densem.hs
+ - Test examples: > run ex[0-3]
+ -
+ - Both ways return the value of result variable
+ -}
+
 {-# OPTIONS_GHC -O2 -optc-O2 #-}
 
 import Data.Char
@@ -248,4 +262,4 @@ ex3 = Cseq (Cexpr (Nassign "result" Nzero))
 main = do  input <- getContents
            let c :: C
                c = read input
-           print c
+           run c
