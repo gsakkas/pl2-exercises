@@ -182,8 +182,10 @@ semN (Npred n) s = (s', n' - 1)
 semN (Nvar x) s = (s, s x)
 semN (Nassign x n) s = (update s' x n', n')
   where (s', n') = semN n s
--- semN (Ninc x) s = (s,  
--- semN (Ndec x) s = (s,  
+semN (Ninc x) s = (update s x n, n)
+  where n = (s x) + 1
+semN (Ndec x) s = (update s x n, n)
+  where n = (s x) - 1
 
 semB :: B -> S -> (S, Bool)
 semB Btrue s = (s, True)
@@ -196,6 +198,7 @@ semB (Beq n1 n2) s = (s'', n1' == n2')
         (s'', n2') = semN n2 s'
 semB (Bnot b) s = (s', not b')
   where (s', b') = semB b s
+
 
 -- Auxiliary functions
 
@@ -211,27 +214,33 @@ makeN 0 = Nzero
 makeN n = Nsucc (makeN (n-1))
 
 
--- Examples
-
+-- Initial state
 s0 x = error ("not initialized variable " ++ x)
 
+
+-- Run example and print result variable
 run c = print (semC c s0 "result")
+
+
+-- Examples
 
 ex0 = Cexpr (Nassign "result" (makeN 42))
 
 ex1 = Cseq (Cexpr (Nassign "result" Nzero))
            (Cfor (makeN 6) (
               Cfor (makeN 7) (
-                Cexpr (Nassign "result" (Nsucc (Nvar "result")))
-              )
-           ))
+                Cexpr (Nassign "result" (Nsucc (Nvar "result"))))))
 
 ex2 = Cseq (Cexpr (Nassign "x" (makeN 42)))
-      (Cseq (Cexpr (Nassign "result" Nzero))
-            (Cwhile (Blt Nzero (Nvar "x"))
-              (Cseq (Cexpr (Nassign "x" (Npred (Nvar "x"))))
-                    (Cexpr (Nassign "result" (Nsucc (Nvar "result")))))))
+           (Cseq (Cexpr (Nassign "result" Nzero))
+                 (Cwhile (Blt Nzero (Nvar "x"))
+                         (Cseq (Cexpr (Nassign "x" (Npred (Nvar "x"))))
+                               (Cexpr (Nassign "result" (Nsucc (Nvar "result")))))))
 
+ex3 = Cseq (Cexpr (Nassign "result" Nzero))
+           (Cfor (makeN 6) (
+              Cfor (makeN 7) (
+                Cexpr (Ndec "result"))))
 
 
 -- Main function: parsing a statement and pretty-printing
