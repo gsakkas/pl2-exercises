@@ -1,0 +1,4 @@
+x := 0;
+for succ succ succ 0 do for succ succ 0 do for succ succ succ succ succ succ succ 0 do x++;
+result := 0;
+for x do result++
