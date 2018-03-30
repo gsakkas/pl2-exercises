@@ -24,20 +24,32 @@
 
   if (!isset($_SESSION['amount'])) {
     $_SESSION['amount'] = 2000.00;
+    $_SESSION['tries'] = 42;
     $_SESSION['finished'] = false;
+    $_SESSION['bad_finished'] = false;
     $_SESSION['magic_num'] = find_rand_magic_num();
   }
 
   if (isset($_POST['answer'])) {
-    $hashed_ans = hash('sha256', hex2bin($_POST['answer']));
-    $hashed_2_ans = hash('sha256', hex2bin($hashed_ans));
-    if (substr($hashed_2_ans, 0, 4) === $_SESSION['magic_num']) {
-      $_SESSION['result'] = true;
-      $_SESSION['res_amount'] = bitcoin_amount($hashed_2_ans);
-      $_SESSION['amount'] -= $_SESSION['res_amount'];
-      if ($_SESSION['amount'] <= 0) {
-        $_SESSION['finished'] = true;
-        $_SESSION['amount'] = 0;
+    $ans = $_POST['answer'];
+    $_SESSION['tries'] -= 1;
+    if ($_SESSION['tries'] == 0) {
+      $_SESSION['bad_finished'] = true;
+    }
+    if (strlen($ans) === 64) {
+      $hashed_ans = hash('sha256', hex2bin($ans));
+      $hashed_2_ans = hash('sha256', hex2bin($hashed_ans));
+      if (substr($hashed_2_ans, 0, 4) === $_SESSION['magic_num']) {
+        $_SESSION['result'] = true;
+        $_SESSION['res_amount'] = bitcoin_amount($hashed_2_ans);
+        $_SESSION['amount'] -= $_SESSION['res_amount'];
+        if ($_SESSION['amount'] <= 0) {
+          $_SESSION['finished'] = true;
+          $_SESSION['amount'] = 0;
+        }
+      }
+      else {
+        $_SESSION['result'] = false;
       }
     }
     else {
@@ -146,11 +158,30 @@ input.wide {
 
 <p>I'd like to have 2000.00 euros, you still
   owe me <?php echo number_format($_SESSION['amount'], 2, ".", ""); ?>.</p>
-<?php
+  <?php
   if (isset($_POST['answer'])) {
-    if ($_SESSION['result'] && !$_SESSION['finished']) {
-?>
+    if ($_SESSION['bad_finished'] && $_SESSION['amount'] > 0) {
+  ?>
+      <p class="wrong">You are out of tries!  :-(</p>
+    <?php
+      if ($_SESSION['result']) {
+    ?>
+      <p>You just gave me a bitcoin worth <?php echo number_format($_SESSION['res_amount'], 2, ".", ""); ?> euros. But it was not enough!</p>
+    <?php
+      }
+    ?>
+      <hr>
+      <form action="<?php echo $self; ?>" id="r" name="r" method="post">
+        <input type="hidden" id="reset" name="reset" value="reset" />
+        <input type="submit" name="again" id="again" value="Play again!" />
+      </form>
+    <?php
+      unset($_SESSION['amount']);
+    }
+    elseif ($_SESSION['result'] && !$_SESSION['finished']) {
+    ?>
       <p class="right">Right!  :-)</p>
+      <p>You just gave me a bitcoin worth <?php echo number_format($_SESSION['res_amount'], 2, ".", ""); ?> euros. Thank you!</p>
       <p>You just gave me a bitcoin worth <?php echo number_format($_SESSION['res_amount'], 2, ".", ""); ?> euros. Thank you!</p>
       <hr />
       <form action="<?php echo $self; ?>" id="r" name="r" method="post">
