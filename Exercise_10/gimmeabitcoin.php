@@ -182,7 +182,6 @@ input.wide {
     ?>
       <p class="right">Right!  :-)</p>
       <p>You just gave me a bitcoin worth <?php echo number_format($_SESSION['res_amount'], 2, ".", ""); ?> euros. Thank you!</p>
-      <p>You just gave me a bitcoin worth <?php echo number_format($_SESSION['res_amount'], 2, ".", ""); ?> euros. Thank you!</p>
       <hr />
       <form action="<?php echo $self; ?>" id="r" name="r" method="post">
         <input type="hidden" id="continue" name="continue" value="continue" />
@@ -195,7 +194,6 @@ input.wide {
       <p class="right">Right!  :-)</p>
       <p>You just gave me a bitcoin worth <?php echo number_format($_SESSION['res_amount'], 2, ".", ""); ?> euros. Thank you!</p>
       <hr />
-      <!-- <p>It took you 584.249 seconds.</p> -->
       <form action="<?php echo $self; ?>" id="r" name="r" method="post">
         <input type="hidden" id="reset" name="reset" value="reset" />
         <input type="submit" name="again" id="again" value="Play again!" />
