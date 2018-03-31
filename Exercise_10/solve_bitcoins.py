@@ -94,7 +94,8 @@ for i in xrange(42):
                 print parser.get_data()
                 print "Finished game! Starting new..."
                 data = {'again': 'Play again!'}
-                req = ses.post(url, headers=headers)
+                req = ses.post(url, headers=headers,
+                               data=data, cookies=cookies)
                 parser.feed(req.text)
                 magic_code = parser.get_data()
                 game += 1
@@ -109,7 +110,10 @@ for i in xrange(42):
                 magic_code = parser.get_data()
             else:
                 print "Something went wrong. Exiting..."
+                ses.close()
                 exit(-1)
             break
         n += 1
     round += 1
+
+ses.close()
