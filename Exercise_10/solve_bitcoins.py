@@ -54,10 +54,9 @@ url = sys.argv[1]
 
 # Create a Session
 ses = requests.Session()
-headers = {'User-Agent': 'Mozilla/5.0'}
 
 # Get request
-req = ses.get(url, headers=headers)
+req = ses.get(url)
 cookies = requests.utils.cookiejar_from_dict(
     requests.utils.dict_from_cookiejar(ses.cookies))
 
@@ -85,17 +84,15 @@ for i in xrange(42):
             print "Tested bitcoins: " + str(n)
             print initial
             data = {'answer': initial, 'submit': 'Submit!'}
-            req = ses.post(url, headers=headers,
-                           data=data, cookies=cookies)
+            req = ses.post(url, data=data, cookies=cookies)
             parser.feed(req.text)
             # Submit finished site
             if parser.is_finished():
                 parser.is_correct()
                 print parser.get_data()
                 print "Finished game! Starting new..."
-                data = {'again': 'Play again!'}
-                req = ses.post(url, headers=headers,
-                               data=data, cookies=cookies)
+                data = {'reset': 'reset', 'again': 'Play again!'}
+                req = ses.post(url, data=data, cookies=cookies)
                 parser.feed(req.text)
                 magic_code = parser.get_data()
                 game += 1
@@ -103,9 +100,8 @@ for i in xrange(42):
             # Submit correct site but not finished
             elif parser.is_correct():
                 print parser.get_data()
-                data = {'again': 'Continue!'}
-                req = ses.post(url, headers=headers,
-                               data=data, cookies=cookies)
+                data = {'continue': 'continue', 'again': 'Continue!'}
+                req = ses.post(url, data=data, cookies=cookies)
                 parser.feed(req.text)
                 magic_code = parser.get_data()
             else:
